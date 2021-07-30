@@ -10,7 +10,6 @@ jobs:
     env:
       # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
 
     steps:
       - uses: actions/checkout@v2
