@@ -1,5 +1,5 @@
 # shamelessly borrowed from sqlcollabortive/dbatools/.github/workflows/tests.yml
-name: Run Cross Platform Tests
+name: Run SQL Tests
 on: [push]
 defaults:
   run:
@@ -10,10 +10,18 @@ jobs:
     env:
       # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
+      MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
 
     steps:
       - uses: actions/checkout@v2
 
+      # original uses a pair of custom-build dbatools sql images. I changed that to use the generic images from MS.
+      # I also removed the addtional port mappings, I believe that's just for db mirroring (which gets tested using those images)
+      # and we do not need that...
+      #
+      # I am not sure if I need to specify -e  sa_password=<SA_PASSWORD> here or if it 'gets it' from the above env: section
+      # If I have to specify this a -e just for the password, I'm not sure of the exact syntax.
+      # People say that MSSQL_SA_PASSWORD and SA_PASSWORD both work
       - name:  Setup docker images
         run: |
           # create a shared network
@@ -21,8 +29,17 @@ jobs:
           # create a shared volume
           docker volume create shared
           # setup two containers and expose ports
-          docker run -p 1433:1433 -p 5022:5022 --network localnet --hostname dockersql1 --name dockersql1 --mount 'source=shared,target=/shared' -d dbatools/sqlinstance
-          docker run -p 14333:1433 -p 5023:5023  --network localnet --hostname dockersql2 --name dockersql2 --mount 'source=shared,target=/shared' -d dbatools/sqlinstance2
+          docker run -p 1433:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 14333:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2019 --name dockersql2019 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2019-latest
+
+      # I am building this command up as I figure out what is available and what I can do
+      - name: Run some Pester
+        run: |
+          get-module -listavailable -name pester
+          Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+          install-module dbatools -verbose
+          invoke-sqlcmd -serverinstance dockerssql2017 -query "select getdate() RightNow, suser_sname() WhoamI, @@servername as ServerName, @@version as ServerVersion "
+
 
       # I don't think I will ever need the following.
       # appveyor was "the thing" before GitHub actions were invented/released. I think. Maybe I'm wrong.
@@ -31,7 +48,7 @@ jobs:
       #   run: |
       #     gh repo clone sqlcollaborative/appveyor-lab
 
-      # I may need this 'pester stuff' eventually. I do not have those secretns set up.
+      # I may need this 'pester stuff' eventually. I do not have these secrets set up.
       # - name: Run tests
       #   env:
       #     TENANTID: ${{secrets.TENANTID}}

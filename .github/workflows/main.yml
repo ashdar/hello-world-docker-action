@@ -1,3 +1,4 @@
+name: Run Hello World Action
 on: [push]
 
 jobs:
