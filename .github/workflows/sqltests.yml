@@ -11,7 +11,7 @@ jobs:
       # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
       ACCEPT_EULA=Y
-      #MSSQL_AGENT_ENABLED=True
+      # MSSQL_AGENT_ENABLED=True
       MSSQL_PID=Developer
     steps:
       - uses: actions/checkout@v2
