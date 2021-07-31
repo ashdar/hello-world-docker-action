@@ -55,7 +55,7 @@ jobs:
 
       - name: Run a SQL Statement
         run: |
-          Invoke-SqlCmd2 -ServerInstance dockerssql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          Invoke-SqlCmd2 -ServerInstance dockersql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
 
       - name: Run a Pester Test
         run: |
