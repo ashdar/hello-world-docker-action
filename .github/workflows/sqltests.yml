@@ -46,14 +46,20 @@ jobs:
       # I'll try installing invoke-sqlcmd2 and using that, instead.
       #
       # do I need to build a $Credential using sa and the password from then environment?
-      - name: Figure out if a simple Pester test can run
+      - name: Install Pre-Requisites
         run: |
           Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
           Install-Module -Name dbatools -RequiredVersion '1.0.161' -verbose
           Install-Module -Name invoke-sqlcmd2 -verbose
-          Invoke-Sqlcmd2 -SqlInstance dockerssql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
 
+      - name: Run a SQL Statement
+        run: |
+          Invoke-SqlCmd2 -ServerInstance dockerssql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+
+      - name: Run a Pester Test
+        run: |
+          Invoke-Pester .\Tests
 
       # I don't think I will ever need the following.
       # appveyor was "the thing" before GitHub actions were invented/released. I think. Maybe I'm wrong.
