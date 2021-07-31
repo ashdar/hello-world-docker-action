@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      # Following are standard MSSQL environment variables
+      # I'm not working with the SQL Agent here, so I don't need to enable it.
+      # MSSQL_AGENT_ENABLED: True
       MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      ACCEPT_EULA=Y
-      # MSSQL_AGENT_ENABLED=True
-      MSSQL_PID=Developer
+      ACCEPT_EULA: Y
+      MSSQL_PID: Developer
     steps:
       - uses: actions/checkout@v2
 
@@ -38,7 +40,7 @@ jobs:
       #########
       # I am building this command up as I figure out what is available and what I can do
       #
-      # Setting 'trusted' was recommended by @potatoqualitee in a youtube talk I watched 2021/07/30.
+      # Setting 'trusted' was recommended by @potatoqualitee in a YouTube talk I watched 2021/07/30.
       # I need a command to 'run stuff on SQL', I originally choose microsoft\sqlserver\invoke-sqlcmd even though sqlcollaborative\invoke-sqlcmd2\invoke-sqlcmd2 is better.
       # Maybe sqlserver isn't available. The docs I've read indicate that it would be, but when this ran, the log said that it couldn't find Invoke-Sqlcmd.
       # I'll try installing invoke-sqlcmd2 and using that, instead.
@@ -50,7 +52,7 @@ jobs:
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
           Install-Module -Name dbatools -RequiredVersion '1.0.161' -verbose
           Install-Module -Name invoke-sqlcmd2 -verbose
-          Invoke-Sqlcmd2 -SqlInstance dockerssql2017 -query "select getdate() RightNow, suser_sname() WhoamI, @@servername as ServerName, @@version as SqlServerVersion "
+          Invoke-Sqlcmd2 -SqlInstance dockerssql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
 
 
       # I don't think I will ever need the following.
