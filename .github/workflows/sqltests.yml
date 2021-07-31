@@ -10,13 +10,18 @@ jobs:
     env:
       # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
-
+      ACCEPT_EULA=Y
+      #MSSQL_AGENT_ENABLED=True
+      MSSQL_PID=Developer
     steps:
       - uses: actions/checkout@v2
 
       # original uses a pair of custom-build dbatools sql images. I changed that to use the generic images from MS.
       # I also removed the addtional port mappings, I believe that's just for db mirroring (which gets tested using those images)
       # and we do not need that...
+      #
+      # I do not need two instances running and the version I'm using is not important, I'll keep this here for safekeeping.
+      # docker run -p 14333:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2019 --name dockersql2019 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2019-latest
       #
       # I am not sure if I need to specify -e  sa_password=<SA_PASSWORD> here or if it 'gets it' from the above env: section
       # If I have to specify this a -e just for the password, I'm not sure of the exact syntax.
@@ -29,15 +34,23 @@ jobs:
           docker volume create shared
           # setup two containers and expose ports
           docker run -p 1433:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          docker run -p 14333:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2019 --name dockersql2019 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2019-latest
 
+      #########
       # I am building this command up as I figure out what is available and what I can do
-      - name: Run some Pester
+      #
+      # Setting 'trusted' was recommended by @potatoqualitee in a youtube talk I watched 2021/07/30.
+      # I need a command to 'run stuff on SQL', I originally choose microsoft\sqlserver\invoke-sqlcmd even though sqlcollaborative\invoke-sqlcmd2\invoke-sqlcmd2 is better.
+      # Maybe sqlserver isn't available. The docs I've read indicate that it would be, but when this ran, the log said that it couldn't find Invoke-Sqlcmd.
+      # I'll try installing invoke-sqlcmd2 and using that, instead.
+      #
+      # do I need to build a $Credential using sa and the password from then environment?
+      - name: Figure out if a simple Pester test can run
         run: |
-          get-module -listavailable -name pester
+          Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
-          install-module dbatools -verbose
-          invoke-sqlcmd -serverinstance dockerssql2017 -query "select getdate() RightNow, suser_sname() WhoamI, @@servername as ServerName, @@version as ServerVersion "
+          Install-Module -Name dbatools -RequiredVersion '1.0.161' -verbose
+          Install-Module -Name invoke-sqlcmd2 -verbose
+          Invoke-Sqlcmd2 -SqlInstance dockerssql2017 -query "select getdate() RightNow, suser_sname() WhoamI, @@servername as ServerName, @@version as SqlServerVersion "
 
 
       # I don't think I will ever need the following.
