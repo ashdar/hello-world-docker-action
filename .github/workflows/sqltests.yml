@@ -13,7 +13,6 @@ jobs:
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
       SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      #SA_PASSWORD: Hello@world2
       ACCEPT_EULA: Y
       MSSQL_PID: Developer
     steps:
@@ -56,7 +55,6 @@ jobs:
           # setup container and expose port
           write-host "INFO:Start the mssql container"
           docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello@world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           sleep 5
           #
           write-host "INFO:Configuring a credential"
@@ -74,6 +72,8 @@ jobs:
 
       - name: Run a SQL Statement
         run: |
+          Write-host "Docker Run, again"
+          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           write-host "Configuring a credential"
           $Username = "sa"
           $Password = $env:SA_PASSWORD
@@ -89,27 +89,6 @@ jobs:
           $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance dockersql2017 -query $Query
 
-      - name: Run a Pester Test
+      - name: Run Pester Tests
         run: |
           Invoke-Pester .\Tests
-
-      # I don't think I will ever need the following, which I borrowed from dbatools.
-      # appveyor was "the thing" before GitHub actions were invented/released and GH Actions should be used by new, small projects.
-      # I think. Maybe I'm wrong.
-      #
-      # - name: 👥 Clone appveyor repo
-      #   working-directory: /tmp
-      #   run: |
-      #     gh repo clone sqlcollaborative/appveyor-lab
-      #
-      # I may need this 'pester stuff' eventually. I do not have these secrets set up.
-      # - name: Run tests
-      #   env:
-      #     TENANTID: ${{secrets.TENANTID}}
-      #     CLIENTID: ${{secrets.CLIENTID}}
-      #     CLIENTSECRET: ${{secrets.CLIENTSECRET}}
-      #   run: |
-      #     $results = Invoke-Pester ./tests/gh-actions.ps1 -Output Detailed -PassThru
-      #     if ($results.Result -ne "Passed") {
-      #         throw "There were $($results.FailedCount) failed tests."
-      #     }
