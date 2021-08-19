@@ -13,8 +13,9 @@ jobs:
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
       SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      ACCEPT_EULA: Y
+      #ACCEPT_EULA: Y
       MSSQL_PID: Developer
+      TEST_SQLINSTANCE: localhost
     steps:
       - uses: actions/checkout@v2
 
@@ -54,7 +55,7 @@ jobs:
           docker volume create shared
           # setup container and expose port
           write-host "INFO:Start the mssql container"
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           sleep 5
           #
           write-host "INFO:Configuring a credential"
@@ -66,14 +67,14 @@ jobs:
           #
           write-host "INFO:Starting a query"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance localhost -query $Query
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
           write-host "ending step"
 
 
       - name: Run a SQL Statement
         run: |
-          Write-host "Docker Run, again"
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #Write-host "Docker Run, again"
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           write-host "Configuring a credential"
           $Username = "sa"
           $Password = $env:SA_PASSWORD
@@ -87,7 +88,7 @@ jobs:
           Write-Host "INFO: Try a query"
           # FIXME: I am 98% sure that I would need to re-create $cred in every step, based on 'sa' (for the username) and $env:SA_PASSWORD
           $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance dockersql2017 -query $Query
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
 
       - name: Run Pester Tests
         run: |
