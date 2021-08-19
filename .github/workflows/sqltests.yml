@@ -75,6 +75,26 @@ jobs:
           Write-Host "ending step"
 
 
+      - name: Publish a DACPAC to the SQL Server
+        run: |
+          # The Docker mssql container from the prior step is still up, but you need to recreate the credential
+          Write-Host "Configuring a credential"
+          $Username = "sa"
+          $Password = $env:SA_PASSWORD
+          $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
+          $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
+          #
+          Write-Host "INFO: Publish DACPAC"
+          $Database = 'hwda'
+          $exportFilePath = '.\Tests\Data\hwda.dacpac'
+          $options = New-DbaDacOption -Type Dacpac -Action Publish
+          $options.DeployOptions.DropObjectsNotInSource = $true
+          Publish-DbaDacPackage -Credential $Cred -SqlInstance $ENV:TEST_SQLINSTANCE -Database $Database -DacOption $options -Path $exportFilePath -EnableException
+          #
+          Write-Host "INFO: Load the test data"
+          $Query= "execute InitializeData.Initialize_All"
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
+
       - name: Run a SQL Statement
         run: |
           # The Docker mssql container from the prior step is still up, but you need to recreate the credential
@@ -85,7 +105,7 @@ jobs:
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
           Write-Host "INFO: Try a query"
-          $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          $Query= "select name from sys.databases d "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
 
       - name: Run Pester Tests
