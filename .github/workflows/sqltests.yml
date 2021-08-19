@@ -49,18 +49,20 @@ jobs:
       #
       - name:  Setup docker images
         run: |
-          # create a shared network
+          # create a shared network.
+          # I don't know why I need this, but when I try to remove it, the step fails.
           docker network create localnet
           #
           # create a shared volume
           docker volume create shared
+          #
           # setup container and expose port
           Write-Host "INFO:Start the mssql container"
           docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #
-          # I am guessing that we need this sleep here
-          sleep 3
+          # I am guessing that we need this sleep here.
+          sleep 10
           #
           Write-Host "INFO:Configuring a credential"
           $Username = "sa"
@@ -69,6 +71,7 @@ jobs:
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
+          # FIXME: Sometimes, during this query, we get ..."but then an error occurred during the pre-login handshake"...
           Write-Host "INFO:Starting a query to dump out system stuff for troubleshooting"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
@@ -93,7 +96,7 @@ jobs:
           #
           Write-Host "INFO: Load the test data"
           $Query= "execute InitializeData.Initialize_All"
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database $Database -query $Query
 
       - name: Run a SQL Statement
         run: |
