@@ -13,7 +13,7 @@ jobs:
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
       #SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      SA_PASSWORD: Hello#world2
+      SA_PASSWORD: Hello@world2
       ACCEPT_EULA: Y
       MSSQL_PID: Developer
     steps:
@@ -54,21 +54,21 @@ jobs:
           # create a shared volume
           docker volume create shared
           # setup container and expose port
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello#world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          write-host "INFO:Start the mssql container"
+          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello@world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           sleep 5
           #
-          write-host "Configuring a credential"
+          write-host "INFO:Configuring a credential"
           $Username = "sa"
           $Password = $env:SA_PASSWORD
           if ($Password) {Write-host ">>>Password is set to something.<<<"}
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
-          write-host "starting firsttry"
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance localhost -query "select 'firsttry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
-          # write-host "starting secondtry"
-          # Invoke-SqlCmd2 -Credential $Cred -ServerInstance localhost -query "select 'secondtry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          write-host "INFO:Starting a query"
+          $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance localhost -query $Query
           write-host "ending step"
 
 
