@@ -13,26 +13,36 @@ Describe 'Foo' {
 
 Describe 'SQL Checks' {
 
-    Context "Is SQL alive: $ServerInstance" {
-        # FIXME: This set up code would be better using BeforeAll/BeforeEach. This is just a demo.
 
+    BeforeEach {
         # Where are we going?
-        if ($ENV:TEST_SQLINSTANCE) {
-            $ServerInstance = $ENV:TEST_SQLINSTANCE
+        if (($ENV:TEST_SQLINSTANCE).Count -gt 0) {
+            $script:ServerInstance = $ENV:TEST_SQLINSTANCE
         }
         else {
-            $ServerInstance = 'localHost'
+            $script:ServerInstance = 'localHost'
         }
 
         # Need to build a $Credential that I cn log into the SQL Server with
         $Username = 'sa'
         $Password = $env:SA_PASSWORD
         $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
-        $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username, $SecureString
+        $script:cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username, $SecureString
+    }
 
-        It 'is connectible' {
+    Context 'Is SQL alive' {
+        It 'must have a password available' {
+            ($env:SA_PASSWORD).Count | Should -BeGreaterThan 0
+        }
+
+        It 'must know which server instance to use' {
+            ($script:ServerInstance).Count | Should -BeGreaterThan 0
+        }
+
+        It "is $($Script:ServerInstance) connectible" {
+
             $Query = 'select getdate() RightNow'
-            $Result = @(Invoke-Sqlcmd2 -ServerInstance $ServerInstance -Credential $Cred -Query $Query -AppendServerInstance)
+            $Result = @(Invoke-Sqlcmd2 -ServerInstance $script:ServerInstance -Credential $script:Cred -Query $Query -AppendServerInstance)
             $Result.Count | Should -BeGreaterThan 0
         }
     }
