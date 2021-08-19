@@ -50,42 +50,45 @@ jobs:
       - name:  Setup docker images
         run: |
           # create a shared network
-          docker network create localnet
+          # docker network create localnet
+          #
           # create a shared volume
           docker volume create shared
           # setup container and expose port
-          write-host "INFO:Start the mssql container"
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          sleep 5
+          Write-Host "INFO:Start the mssql container"
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #
-          write-host "INFO:Configuring a credential"
+          # I am guessing that we need this sleep here
+          sleep 3
+          #
+          Write-Host "INFO:Configuring a credential"
           $Username = "sa"
           $Password = $env:SA_PASSWORD
-          if ($Password) {Write-host ">>>Password is set to something.<<<"}
+          if ($Password) {Write-Host ">>>Password is set to something.<<<"}
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
-          write-host "INFO:Starting a query"
+          Write-Host "INFO:Starting a query to dump out system stuff for troubleshooting"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
-          write-host "ending step"
+          Write-Host "ending step"
 
 
       - name: Run a SQL Statement
         run: |
           # The Docker mssql container from the prior step is still up, but you need to recreate the credential
-          write-host "Configuring a credential"
-          if ($cred) {write-host ">>> Credential already exists <<<"} else {write-host ">>> Credential needs to be recreated <<<"}
+          Write-Host "Configuring a credential"
           $Username = "sa"
           $Password = $env:SA_PASSWORD
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
           Write-Host "INFO: Try a query"
-          # FIXME: I am 98% sure that I would need to re-create $cred in every step, based on 'sa' (for the username) and $env:SA_PASSWORD
           $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
 
       - name: Run Pester Tests
         run: |
+          # The credential is rebuilt in the *.Tests.ps1 file(s)
           Invoke-Pester .\Tests
