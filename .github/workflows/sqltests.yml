@@ -18,25 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # original uses a pair of custom-build dbatools sql images. I changed that to use the generic images from MS.
-      # I also removed the addtional port mappings, I believe that's just for db mirroring (which gets tested using those images)
-      # and we do not need that...
-      #
-      # I do not need two instances running and the version I'm using is not important, I'll keep this here for safekeeping.
-      # docker run -p 14333:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2019 --name dockersql2019 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2019-latest
-      #
-      # I am not sure if I need to specify -e  sa_password=<SA_PASSWORD> here or if it 'gets it' from the above env: section
-      # If I have to specify this a -e just for the password, I'm not sure of the exact syntax.
-      # People say that MSSQL_SA_PASSWORD and SA_PASSWORD both work
-      - name:  Setup docker images
-        run: |
-          # create a shared network
-          docker network create localnet
-          # create a shared volume
-          docker volume create shared
-          # setup two containers and expose ports
-          docker run -p 1433:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-
       #########
       # I am building this command up as I figure out what is available and what I can do
       #
@@ -53,6 +34,32 @@ jobs:
           Install-Module -Name dbatools -RequiredVersion '1.0.161' -verbose
           Install-Module -Name invoke-sqlcmd2 -verbose
 
+      #########
+      # original uses a pair of custom-built dbatools sql images. I changed that to use the generic images from MS.
+      # I also removed the additional port mappings, I believe that's just for db mirroring (which gets tested using those images)
+      # and we do not need that...
+      #
+      # I do not need two instances running and the version of SQL Server is not important, I'll keep this here for safekeeping.
+      # docker run -p 14333:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2019 --name dockersql2019 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2019-latest
+      #
+      # I am not sure if I need to specify -e  sa_password=<SA_PASSWORD> here or if it 'gets it' from the above env: section
+      # If I have to specify this a -e just for the password, I'm not sure of the exact syntax.
+      # People say that MSSQL_SA_PASSWORD and SA_PASSWORD both work
+      - name:  Setup docker images
+        run: |
+          # create a shared network
+          docker network create localnet
+          # create a shared volume
+          docker volume create shared
+          # setup container and expose port
+          docker run -p 1433:1433 -e ACCEPT_EULA=Y --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          # Question: do I only get SQL in this step, or is it "up" until all of my steps complete?
+          sleep 15
+          docker exec -it dockersql2017 /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P $env:MSSQL_SA_PASSWORD -Q "SELECT 'zerotry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion"
+          Invoke-SqlCmd2 -ServerInstance dockersql2017 -query "select 'firsttry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          Invoke-SqlCmd2 -ServerInstance localhost -query "select 'just-localhost' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+
+
       - name: Run a SQL Statement
         run: |
           Invoke-SqlCmd2 -ServerInstance dockersql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
@@ -61,13 +68,15 @@ jobs:
         run: |
           Invoke-Pester .\Tests
 
-      # I don't think I will ever need the following.
-      # appveyor was "the thing" before GitHub actions were invented/released. I think. Maybe I'm wrong.
+      # I don't think I will ever need the following, which I borrowed from dbatools.
+      # appveyor was "the thing" before GitHub actions were invented/released and GH Actions should be used by new, small projects.
+      # I think. Maybe I'm wrong.
+      #
       # - name: 👥 Clone appveyor repo
       #   working-directory: /tmp
       #   run: |
       #     gh repo clone sqlcollaborative/appveyor-lab
-
+      #
       # I may need this 'pester stuff' eventually. I do not have these secrets set up.
       # - name: Run tests
       #   env:
