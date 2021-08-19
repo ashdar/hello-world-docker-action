@@ -4,15 +4,17 @@ Describe 'Foo' {
         It 'is true' {
             $true | Should -BeTrue
         }
-        It "ain't true should force a failure" {
-            $false | Should -BeTrue
+        # It "ain't true should force a failure" {
+        #     $false | Should -BeTrue
+        # }
+        It "ain't true should NOT force a failure" {
+            $false | Should -BeFalse
         }
     }
 }
 
 
 Describe 'SQL Checks' {
-
 
     BeforeEach {
         # Where are we going?
@@ -30,7 +32,7 @@ Describe 'SQL Checks' {
         $script:cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username, $SecureString
     }
 
-    Context 'Is SQL alive' {
+    Context 'Need good parameters to test against SQL Server' {
         It 'must have a password available' {
             ($env:SA_PASSWORD).Count | Should -BeGreaterThan 0
         }
@@ -38,7 +40,9 @@ Describe 'SQL Checks' {
         It 'must know which server instance to use' {
             ($script:ServerInstance).Count | Should -BeGreaterThan 0
         }
+    }
 
+    Context 'Is SQL alive' {
         It "is $($Script:ServerInstance) connectible" {
 
             $Query = 'select getdate() RightNow'
