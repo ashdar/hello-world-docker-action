@@ -12,7 +12,7 @@ jobs:
       # Following are standard MSSQL environment variables
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
-      MSSQL_SA_PASSWORD: ${{secrets.SAPASSWORD}}
+      SA_PASSWORD: ${{secrets.SAPASSWORD}}
       ACCEPT_EULA: Y
       MSSQL_PID: Developer
     steps:
@@ -53,19 +53,17 @@ jobs:
           # create a shared volume
           docker volume create shared
           # setup container and expose port
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello#world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello#world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           # Question: do I only get SQL in this step, or is it "up" until all of my steps complete?
           sleep 5
           write-host "setting security"
           $Username = "sa"
-          $Password = "Hello#world2"
+          #$Password = "Hello#world2"
+          $Password = $env:SA_PASSWORD
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           # Use your password securely
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
-          #
-          #write-host "starting zerotry"
-          #$query = "SELECT 'zerotry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion"
-          #docker exec -it dockersql2017 /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P Hello#world2 -Q $query
           #
           write-host "starting firsttry"
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance localhost -query "select 'firsttry' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
@@ -76,7 +74,8 @@ jobs:
 
       - name: Run a SQL Statement
         run: |
-          Invoke-SqlCmd2 -ServerInstance dockersql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          if (-not $cred) {throw 'Cred not set!!!'}
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance dockersql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
 
       - name: Run a Pester Test
         run: |
