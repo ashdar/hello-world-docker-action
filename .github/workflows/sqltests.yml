@@ -74,17 +74,15 @@ jobs:
       - name: Run a SQL Statement
         run: |
           #Write-host "Docker Run, again"
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #The Docker mssql container is still up
           write-host "Configuring a credential"
+          if ($cred) {write-host ">>> Credential already exists <<<"}
           $Username = "sa"
           $Password = $env:SA_PASSWORD
           if ($Password) {Write-host ">>>Password is set to something.<<<"}
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
-          # Question: do I only get SQL in the PRIOR step, where it gets dockerfied,  or is it "up" until all of my steps complete?
-          Write-Host "INFO: Show any docker containers with: docker ps"
-          docker ps
           Write-Host "INFO: Try a query"
           # FIXME: I am 98% sure that I would need to re-create $cred in every step, based on 'sa' (for the username) and $env:SA_PASSWORD
           $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "

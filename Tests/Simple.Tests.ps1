@@ -20,7 +20,7 @@ Describe "SQL Checks" {
         $ServerInstance = $ENV:TEST_SQLINSTANCE
     }
     else {
-        $ServerInstance = 'localhost'
+        $ServerInstance = 'localHost'
     }
 
     # Need to build a $Credential that I cn log into the SQL Server with
@@ -29,7 +29,7 @@ Describe "SQL Checks" {
     $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
     $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
 
-    Context "Is SQL alive" {
+    Context "Is SQL alive: $ServerInstance" {
         It "is connectible" {
             $Query = "select getdate() RightNow"
             $Result = Invoke-Sqlcmd2 -ServerInstance $ServerInstance -Credential $Cred -Query $Query
