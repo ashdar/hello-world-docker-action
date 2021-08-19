@@ -56,7 +56,7 @@ jobs:
           # setup container and expose port
           #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello#world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          sleep 2
+          sleep 5
           #
           write-host "Configuring a credential"
           $Username = "sa"
