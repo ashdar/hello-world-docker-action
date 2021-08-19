@@ -12,8 +12,8 @@ jobs:
       # Following are standard MSSQL environment variables
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
-      #SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      SA_PASSWORD: Hello@world2
+      SA_PASSWORD: ${{secrets.SAPASSWORD}}
+      #SA_PASSWORD: Hello@world2
       ACCEPT_EULA: Y
       MSSQL_PID: Developer
     steps:
@@ -55,8 +55,8 @@ jobs:
           docker volume create shared
           # setup container and expose port
           write-host "INFO:Start the mssql container"
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello@world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($env:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Hello@world2" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           sleep 5
           #
           write-host "INFO:Configuring a credential"
@@ -82,8 +82,12 @@ jobs:
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
           # Question: do I only get SQL in the PRIOR step, where it gets dockerfied,  or is it "up" until all of my steps complete?
+          Write-Host "INFO: Show any docker containers with: docker ps"
+          docker ps
+          Write-Host "INFO: Try a query"
           # FIXME: I am 98% sure that I would need to re-create $cred in every step, based on 'sa' (for the username) and $env:SA_PASSWORD
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance dockersql2017 -query "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          $Query= "select GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance dockersql2017 -query $Query
 
       - name: Run a Pester Test
         run: |
