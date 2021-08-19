@@ -73,13 +73,11 @@ jobs:
 
       - name: Run a SQL Statement
         run: |
-          #Write-host "Docker Run, again"
-          #The Docker mssql container is still up
+          # The Docker mssql container from the prior step is still up, but you need to recreate the credential
           write-host "Configuring a credential"
-          if ($cred) {write-host ">>> Credential already exists <<<"}
+          if ($cred) {write-host ">>> Credential already exists <<<"} else {write-host ">>> Credential needs to be recreated <<<"}
           $Username = "sa"
           $Password = $env:SA_PASSWORD
-          if ($Password) {Write-host ">>>Password is set to something.<<<"}
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
