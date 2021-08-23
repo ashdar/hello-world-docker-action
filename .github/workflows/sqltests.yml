@@ -34,6 +34,7 @@ jobs:
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
           Install-Module -Name dbatools -RequiredVersion '1.0.161'
           Install-Module -Name invoke-sqlcmd2 -RequiredVersion '1.6.4'
+          $PSVersionTable
 
       #########
       # original uses a pair of custom-built dbatools sql images. I changed that to use the generic images from MS.
@@ -71,7 +72,7 @@ jobs:
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
-          # FIXME: Sometimes, during this query, we get ..."but then an error occurred during the pre-login handshake"...
+          # FIXME: Sometimes and sometimes NOT, during this query, we get ..."but then an error occurred during the pre-login handshake"...
           Write-Host "INFO:Starting a query to dump out system stuff for troubleshooting"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
@@ -90,9 +91,21 @@ jobs:
           Write-Host "INFO: Publish DACPAC"
           $Database = 'hwda'
           $exportFilePath = '.\Tests\Data\hwda.dacpac'
-          $options = New-DbaDacOption -Type Dacpac -Action Publish
-          $options.DeployOptions.DropObjectsNotInSource = $true
-          Publish-DbaDacPackage -Credential $Cred -SqlInstance $ENV:TEST_SQLINSTANCE -Database $Database -DacOption $options -Path $exportFilePath -EnableException
+          #
+          # FIXME: The fancy DbaTools Dac stuff is not available in Pwsh 7.x
+          # In other words: WARNING: [23:44:15][New-DbaDacOption] PowerShell Core is not supported, please use Windows PowerShell.
+          #$options = New-DbaDacOption -Type Dacpac -Action Publish
+          #$options.DeployOptions.DropObjectsNotInSource = $true
+          #Publish-DbaDacPackage -Credential $Cred -SqlInstance $ENV:TEST_SQLINSTANCE -Database $Database -DacOption $options -Path $exportFilePath -EnableException
+          # I think that our usage here is simple enough to just use sqlpackage.exe. The first trick is finding it...
+          $PackageToolPath = (get-module dbatools -ListAvailable | Select-Object -expand FileList)
+          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'bin'
+          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'smo'
+          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'sqlpackage.exe'
+          Set-Alias -Name "Invoke-SqlPackageTool" -Value $PackageToolPath -verbose
+          #
+          # the second trick is getting the complicated command line right...
+          Invoke-SqlPackageTool  /a:Publish /tsn:$ENV:TEST_SQLINSTANCE /tdn:$Database /tu:sa /tp:$env:SA_PASSWORD /sf:$exportFilePath
           #
           Write-Host "INFO: Load the test data"
           $Query= "execute InitializeData.Initialize_All"
