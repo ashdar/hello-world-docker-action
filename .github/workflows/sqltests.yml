@@ -60,25 +60,23 @@ jobs:
           # setup container and expose port
           Write-Host "INFO:Start the mssql container"
           docker run -p 1433:1433 -e ACCEPT_EULA -e SA_PASSWORD -e MSSQL_PID --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
-          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #
           # I am guessing that we need this sleep here.
           sleep 10
           #
-          Write-Host "INFO:Configuring a credential"
-          $Username = "sa"
-          $Password = $env:SA_PASSWORD
-          if ($Password) {Write-Host ">>>Password is set to something.<<<"}
-          $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
-          $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
+
+      - name:  Is MsSql Docker Container OK?
+        run: |
+          # DEBUGGING: Where are we, exactly? I need the path to the "Get Test info" PS1 files.
+          get-childitem .
           #
-          # FIXME: Sometimes and sometimes NOT, during this query, we get ..."but then an error occurred during the pre-login handshake"...
+          Write-Host "INFO:Load Credentials and ServerInstance"
+          $cred = .\Tests\Get-TestSqlCredential.ps1
+          $ServerInstance = .\Tests\Get-TestSqlInstance.ps1
+          #
           Write-Host "INFO:Starting a query to dump out system stuff for troubleshooting"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -query $Query
-          Write-Host "ending step"
-
+          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ServerInstance -query $Query
 
       - name: Publish a DACPAC to the SQL Server
         run: |
@@ -88,6 +86,15 @@ jobs:
           #
           # FIXME: The fancy DbaTools Dac stuff is not available in Pwsh 7.x? Isn't 7.x what I used to locally test with?
           # In other words, from GH Actions: WARNING: [23:44:15][New-DbaDacOption] PowerShell Core is not supported, please use Windows PowerShell.
+          # After some research, it seems that I'm using a Ubuntu task runner, which means I need a linux version of sqlpackage, which is
+          # NOT what you get when we install the dbatools pre-requisite. In fact, there doesn't seem to be a linux version of sqlpackage,
+          # though there was one and it seems like it was never officially released.
+          # It _might_ be hinding someonwere in the mssql docker image. That means I'd have to copy the dacpac in there first, then exec
+          # sqlpackage within the docker container and then we'd be good to go.
+          #
+          # Alternatively, I believe that I could switch from a Ubuntu runner to a Windows runner, and the code below here would
+          # be good to go, even with it's jenky "find the sqlpackage.exe file" implementation.
+          #
           #$options = New-DbaDacOption -Type Dacpac -Action Publish
           #$options.DeployOptions.DropObjectsNotInSource = $true
           #Publish-DbaDacPackage -Credential $Cred -SqlInstance $ENV:TEST_SQLINSTANCE -Database $Database -DacOption $options -Path $exportFilePath -EnableException
@@ -103,12 +110,10 @@ jobs:
           #
           # the second trick is getting the complicated command line right...
           # FIXME: Commented out for debugging
+          # If I go with a Windows task runner, I should just be able to use the dbatools\Publish-DbaDacPackage cmdlet, and
+          # the weird calling interface below here and the wierd 'find the EXE and set an alias' code above here could be removed.
           # Invoke-SqlPackageTool  /a:Publish /tsn:$ENV:TEST_SQLINSTANCE /tdn:$Database /tu:sa /tp:$ENV:SA_PASSWORD /sf:$exportFilePath
           #
-          # FIXME: I'm using an EXE, but this runner (not the container, the "runs-on"/search this file) is a "ubuntu-latest" runner?
-          # The pre-requisites I install earlier are all PowerShell bits (and might run on non-Windows OS),
-          # except for sqlpackge.exe which is a compiled app.
-          # can I use a Windows runner or can I find a version of sqlpackage.exe that is built for ubuntu?
       - name: Initialize the data for testing
         run: |
           # The Docker mssql container from a prior step is still up, but you need to recreate the credential
