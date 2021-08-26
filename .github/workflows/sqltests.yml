@@ -29,7 +29,7 @@ jobs:
           # $PSVersionTable
           # Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
           # Setting 'trusted' was recommended by @potatoqualitee in a YouTube talk I watched 2021/07/30.
-          Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+          Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
           Install-Module -Name dbatools -RequiredVersion '1.0.161'
           Install-Module -Name invoke-sqlcmd2 -RequiredVersion '1.6.4'
 
