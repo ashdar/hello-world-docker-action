@@ -12,8 +12,8 @@ jobs:
       # Following are standard MSSQL environment variables
       # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
+      ACCEPT_EULA: Y
       SA_PASSWORD: ${{secrets.SAPASSWORD}}
-      #ACCEPT_EULA: Y
       MSSQL_PID: Developer
       TEST_SQLINSTANCE: localhost
     steps:
@@ -59,7 +59,8 @@ jobs:
           #
           # setup container and expose port
           Write-Host "INFO:Start the mssql container"
-          docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 -e ACCEPT_EULA -e SA_PASSWORD -e MSSQL_PID --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #docker run -p 1433:1433 -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$($ENV:SA_PASSWORD)" --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #
           # I am guessing that we need this sleep here.
@@ -101,8 +102,13 @@ jobs:
           Set-Alias -Name "Invoke-SqlPackageTool" -Value $PackageToolPath -verbose
           #
           # the second trick is getting the complicated command line right...
-          Invoke-SqlPackageTool  /a:Publish /tsn:$ENV:TEST_SQLINSTANCE /tdn:$Database /tu:sa /tp:$ENV:SA_PASSWORD /sf:$exportFilePath
-
+          # FIXME: Commented out for debugging
+          # Invoke-SqlPackageTool  /a:Publish /tsn:$ENV:TEST_SQLINSTANCE /tdn:$Database /tu:sa /tp:$ENV:SA_PASSWORD /sf:$exportFilePath
+          #
+          # FIXME: I'm using an EXE, but this runner (not the container, the "runs-on"/search this file) is a "ubuntu-latest" runner?
+          # The pre-requisites I install earlier are all PowerShell bits (and might run on non-Windows OS),
+          # except for sqlpackge.exe which is a compiled app.
+          # can I use a Windows runner or can I find a version of sqlpackage.exe that is built for ubuntu?
       - name: Initialize the data for testing
         run: |
           # The Docker mssql container from a prior step is still up, but you need to recreate the credential
@@ -113,11 +119,13 @@ jobs:
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
           Write-Host "INFO: Initialize the test data"
+          #
           # debugging: does my database really exist?
-          $Database = 'hwda'
-          $Query= "select name from sys.databases"
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database 'master' -query $Query
-          $Query= "execute InitializeData.Initialize_All"
+          # FIXME: commented out for debugging
+          #$Database = 'hwda'
+          #$Query= "execute InitializeData.Initialize_All"
+          $Database = 'master'
+          $Query= "select 'DEBUGGING' EventName, name as dbn from sys.databases"
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database $Database -query $Query
 
 
@@ -130,8 +138,11 @@ jobs:
           $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
           $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
           #
-          $Database = 'hwda'
           Write-Host "INFO: Try a query"
+          # FIXME: commented out for debugging
+          #$Database = 'hwda'
+          #$Query= "select top 10 * from [lookup].[State]"
+          $Database = 'master'
           $Query= "select name from sys.databases d "
           Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database $database -query $Query
 
