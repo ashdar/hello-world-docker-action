@@ -8,13 +8,10 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     env:
-      # GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      # Following are standard MSSQL environment variables
-      # I'm not working with the SQL Agent here, so I don't need to enable it.
       # MSSQL_AGENT_ENABLED: True
       ACCEPT_EULA: Y
-      SA_PASSWORD: ${{secrets.SAPASSWORD}}
       MSSQL_PID: Developer
+      SA_PASSWORD: ${{secrets.SAPASSWORD}}
       TEST_SQLINSTANCE: localhost
     steps:
       - uses: actions/checkout@v2
@@ -22,19 +19,19 @@ jobs:
       #########
       # I am building this command up as I figure out what is available and what I can do
       #
-      # Setting 'trusted' was recommended by @potatoqualitee in a YouTube talk I watched 2021/07/30.
       # I need a command to 'run stuff on SQL', I originally choose microsoft\sqlserver\invoke-sqlcmd even though sqlcollaborative\invoke-sqlcmd2\invoke-sqlcmd2 is better.
       # Maybe sqlserver isn't available. The docs I've read indicate that it would be, but when this ran, the log said that it couldn't find Invoke-Sqlcmd.
       # I'll try installing invoke-sqlcmd2 and using that, instead.
       #
-      # do I need to build a $Credential using sa and the password from then environment?
       - name: Install Pre-Requisites
         run: |
-          Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
+          # These next two lines are mainly just debugging
+          # $PSVersionTable
+          # Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
+          # Setting 'trusted' was recommended by @potatoqualitee in a YouTube talk I watched 2021/07/30.
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
           Install-Module -Name dbatools -RequiredVersion '1.0.161'
           Install-Module -Name invoke-sqlcmd2 -RequiredVersion '1.6.4'
-          $PSVersionTable
 
       #########
       # original uses a pair of custom-built dbatools sql images. I changed that to use the generic images from MS.
