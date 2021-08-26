@@ -49,14 +49,17 @@ jobs:
         run: |
           # create a shared network.
           # I don't know why I need this, but when I try to remove it, the step fails.
-          docker network create localnet
+          # I believe that I would only need to create a docker network if i wanted two instances, as I might if I were testing
+          # Availability Groups or replication between two SQL Servers
+          # docker network create localnet
           #
           # create a shared volume
           docker volume create shared
           #
           # setup container and expose port
           Write-Host "INFO:Start the mssql container"
-          docker run -p 1433:1433 -e ACCEPT_EULA -e SA_PASSWORD -e MSSQL_PID --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          #docker run -p 1433:1433 -e ACCEPT_EULA -e SA_PASSWORD -e MSSQL_PID --network localnet --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
+          docker run -p 1433:1433 -e ACCEPT_EULA -e SA_PASSWORD -e MSSQL_PID --hostname dockersql2017 --name dockersql2017 --mount 'source=shared,target=/shared' -d mcr.microsoft.com/mssql/server:2017-latest
           #
           # I am guessing that we need this sleep here.
           sleep 10
