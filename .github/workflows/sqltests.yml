@@ -100,7 +100,7 @@ jobs:
           #
           $options = New-DbaDacOption -Type Dacpac -Action Publish
           $options.DeployOptions.DropObjectsNotInSource = $true
-          Publish-DbaDacPackage -Credential $Cred -SqlInstance $ServerInstance -Database $Database -DacOption $options -Path $exportFilePath -EnableException
+          Publish-DbaDacPackage -SqlCredential $Cred -SqlInstance $ServerInstance -Database $Database -DacOption $options -Path $exportFilePath -EnableException
           #
           # First idea is running the sqlpackage.exe command line tool, which should get installed with DbaTools
           # I think that our usage here is simple enough to just use sqlpackage.exe, without a lot of XML command line drama.
