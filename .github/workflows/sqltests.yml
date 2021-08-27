@@ -81,7 +81,13 @@ jobs:
         run: |
           Write-Host "INFO: Publish DACPAC"
           $Database = 'hwda'
-          $exportFilePath = '.\Tests\Data\hwda.dacpac'
+          get-childitem .
+          $exportFilePath = Join-Path -Path '.' -ChildPath 'Tests'
+          get-childitem $exportFilePath
+          $exportFilePath = Join-Path -Path $exportFilePath -ChildPath 'Data'
+          get-childitem $exportFilePath
+          $exportFilePath = Join-Path -Path $exportFilePath -ChildPath 'hwda.dacpac'
+          Write-Verbose -Verbose "$exportFilePath"
           #
           Write-Host "INFO:Load Credentials and ServerInstance"
           $Cred = .\Tests\Get-TestSqlCredential.ps1
