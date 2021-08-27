@@ -58,7 +58,7 @@ jobs:
           $Cred = .\Tests\Get-TestSqlCredential.ps1
           $ServerInstance = .\Tests\Get-TestSqlInstance.ps1
           #
-          Write-Host "INFO: Publish DACPAC
+          Write-Host "INFO: Publish DACPAC"
           $Database = 'hwda'
           $exportFilePath = Join-Path -Path '.' -ChildPath 'Tests'
           $exportFilePath = Join-Path -Path $exportFilePath -ChildPath 'Data'
