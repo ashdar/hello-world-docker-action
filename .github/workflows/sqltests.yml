@@ -19,19 +19,23 @@ jobs:
       #########
       # I am building this command up as I figure out what is available and what I can do
       #
-      # I need a command to 'run stuff on SQL', I originally choose microsoft\sqlserver\invoke-sqlcmd even though sqlcollaborative\invoke-sqlcmd2\invoke-sqlcmd2 is better.
+      # I need a command to 'run stuff on SQL',
       # Maybe sqlserver isn't available. The docs I've read indicate that it would be, but when this ran, the log said that it couldn't find Invoke-Sqlcmd.
-      # I'll try installing invoke-sqlcmd2 and using that, instead.
+      # Using Invoke-SqlCmd2 would be better than installing all of dbatools, if I don't need all of dbatools.
+      # using Invoke-Sqlcmd may also be an option, depending on what is already installed on your task runner.
       #
       - name: Install Pre-Requisites
         run: |
           # These next two lines are mainly just debugging
           # $PSVersionTable
-          # Get-Module -listavailable -Name dbatools,sqlserver,pester,invoke-sqlcmd2
+          # Get-Module -listavailable -Name dbatools,sqlserver,pester
           # Setting 'trusted' was recommended by @potatoqualitee in a YouTube talk I watched 2021/07/30.
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'
-          Install-Module -Name dbatools -RequiredVersion '1.0.161'
-          Install-Module -Name invoke-sqlcmd2 -RequiredVersion '1.6.4'
+          #
+          # 1.1.0 brings improved linux support.
+          # https://github.com/sqlcollaborative/dbatools/releases/tag/v1.1.0
+          # Install-Module -Name dbatools -RequiredVersion '1.0.161'
+          Install-Module -Name dbatools -RequiredVersion '1.1.0'
 
       #########
       # original uses a pair of custom-built dbatools sql images. I changed that to use the generic images from MS.
@@ -71,7 +75,7 @@ jobs:
           #
           Write-Host "INFO:Starting a query to dump out system stuff for troubleshooting"
           $Query = "select 'Try01' as EventName, GETDATE() RightNow, SUSER_SNAME() WhoamI, @@SERVERNAME as ServerName, @@VERSION as SqlServerVersion "
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ServerInstance -query $Query
+          Invoke-DbaQuery -SqlCredential $Cred -SqlInstance $ServerInstance -Query $Query
 
       - name: Publish a DACPAC to the SQL Server
         run: |
@@ -112,11 +116,9 @@ jobs:
       - name: Initialize the data for testing
         run: |
           # The Docker mssql container from a prior step is still up, but you need to recreate the credential
-          Write-Host "Configuring a credential"
-          $Username = "sa"
-          $Password = $env:SA_PASSWORD
-          $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
-          $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
+          Write-Host "INFO:Load Credentials and ServerInstance"
+          $cred = .\Tests\Get-TestSqlCredential.ps1
+          $ServerInstance = .\Tests\Get-TestSqlInstance.ps1
           #
           Write-Host "INFO: Initialize the test data"
           #
@@ -126,17 +128,15 @@ jobs:
           #$Query= "execute InitializeData.Initialize_All"
           $Database = 'master'
           $Query= "select 'DEBUGGING' EventName, name as dbn from sys.databases"
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database $Database -query $Query
+          Invoke-DbaQuery -SqlCredential $Cred -SqlInstance $ServerInstance -Database $Database  -query $Query
 
 
       - name: Run a test SQL Query
         run: |
           # The Docker mssql container from the prior step is still up, but you need to recreate the credential
-          Write-Host "Configuring a credential"
-          $Username = "sa"
-          $Password = $env:SA_PASSWORD
-          $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
-          $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username,$SecureString
+          Write-Host "INFO:Load Credentials and ServerInstance"
+          $cred = .\Tests\Get-TestSqlCredential.ps1
+          $ServerInstance = .\Tests\Get-TestSqlInstance.ps1
           #
           Write-Host "INFO: Try a query"
           # FIXME: commented out for debugging
@@ -144,7 +144,7 @@ jobs:
           #$Query= "select top 10 * from [lookup].[State]"
           $Database = 'master'
           $Query= "select name from sys.databases d "
-          Invoke-SqlCmd2 -Credential $Cred -ServerInstance $ENV:TEST_SQLINSTANCE -Database $database -query $Query
+          Invoke-DbaQuery -SqlCredential $Cred -SqlInstance $ServerInstance -Database $Database -query $Query
 
       - name: Run Pester Tests
         run: |
