@@ -83,29 +83,33 @@ jobs:
           $Database = 'hwda'
           $exportFilePath = '.\Tests\Data\hwda.dacpac'
           #
+          Write-Host "INFO:Load Credentials and ServerInstance"
+          $Cred = .\Tests\Get-TestSqlCredential.ps1
+          $ServerInstance = .\Tests\Get-TestSqlInstance.ps1
+          #
           # FIXME: The fancy DbaTools Dac stuff is not available in Pwsh 7.x? Isn't 7.x what I used to locally test with?
           # In other words, from GH Actions: WARNING: [23:44:15][New-DbaDacOption] PowerShell Core is not supported, please use Windows PowerShell.
           # After some research, it seems that I'm using a Ubuntu task runner, which means I need a linux version of sqlpackage, which is
           # NOT what you get when we install the dbatools pre-requisite. In fact, there doesn't seem to be a linux version of sqlpackage,
           # though there was one and it seems like it was never officially released.
-          # It _might_ be hinding someonwere in the mssql docker image. That means I'd have to copy the dacpac in there first, then exec
+          # It _might_ be hiding somewhere in the mssql docker image. That means I'd have to copy the dacpac in there first, then exec
           # sqlpackage within the docker container and then we'd be good to go.
           #
           # Alternatively, I believe that I could switch from a Ubuntu runner to a Windows runner, and the code below here would
           # be good to go, even with it's jenky "find the sqlpackage.exe file" implementation.
           #
-          #$options = New-DbaDacOption -Type Dacpac -Action Publish
-          #$options.DeployOptions.DropObjectsNotInSource = $true
-          #Publish-DbaDacPackage -Credential $Cred -SqlInstance $ENV:TEST_SQLINSTANCE -Database $Database -DacOption $options -Path $exportFilePath -EnableException
+          $options = New-DbaDacOption -Type Dacpac -Action Publish
+          $options.DeployOptions.DropObjectsNotInSource = $true
+          Publish-DbaDacPackage -Credential $Cred -SqlInstance $ServerInstance -Database $Database -DacOption $options -Path $exportFilePath -EnableException
           #
           # First idea is running the sqlpackage.exe command line tool, which should get installed with DbaTools
           # I think that our usage here is simple enough to just use sqlpackage.exe, without a lot of XML command line drama.
           # The first trick is finding the tool so we can use it...
-          $PackageToolPath = (get-module dbatools -ListAvailable | Select-Object -expand FileList)
-          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'bin'
-          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'smo'
-          $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'sqlpackage.exe'
-          Set-Alias -Name "Invoke-SqlPackageTool" -Value $PackageToolPath -verbose
+          # $PackageToolPath = (get-module dbatools -ListAvailable | Select-Object -expand FileList)
+          # $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'bin'
+          # $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'smo'
+          # $PackageToolPath = Join-path -Path $PackageToolPath -ChildPath 'sqlpackage.exe'
+          # Set-Alias -Name "Invoke-SqlPackageTool" -Value $PackageToolPath -verbose
           #
           # the second trick is getting the complicated command line right...
           # FIXME: Commented out for debugging
@@ -124,10 +128,10 @@ jobs:
           #
           # debugging: does my database really exist?
           # FIXME: commented out for debugging
-          #$Database = 'hwda'
-          #$Query= "execute InitializeData.Initialize_All"
-          $Database = 'master'
-          $Query= "select 'DEBUGGING' EventName, name as dbn from sys.databases"
+          $Database = 'hwda'
+          $Query= "execute InitializeData.Initialize_All"
+          # $Database = 'master'
+          # $Query= "select 'DEBUGGING' EventName, name as dbn from sys.databases"
           Invoke-DbaQuery -SqlCredential $Cred -SqlInstance $ServerInstance -Database $Database  -query $Query
 
 
@@ -140,10 +144,10 @@ jobs:
           #
           Write-Host "INFO: Try a query"
           # FIXME: commented out for debugging
-          #$Database = 'hwda'
-          #$Query= "select top 10 * from [lookup].[State]"
-          $Database = 'master'
-          $Query= "select name from sys.databases d "
+          $Database = 'hwda'
+          $Query= "select top 10 * from [lookup].[State]"
+          # $Database = 'master'
+          # $Query= "select name from sys.databases d "
           Invoke-DbaQuery -SqlCredential $Cred -SqlInstance $ServerInstance -Database $Database -query $Query
 
       - name: Run Pester Tests
