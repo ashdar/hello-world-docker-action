@@ -16,38 +16,34 @@ Describe 'Foo' {
 
 Describe 'SQL Checks' {
 
-    BeforeEach {
-        # Where are we going?
-        if (($ENV:TEST_SQLINSTANCE).Count -gt 0) {
-            $script:ServerInstance = $ENV:TEST_SQLINSTANCE
-        }
-        else {
-            $script:ServerInstance = 'localHost'
-        }
+    BeforeAll {
+        # Where are we going and who are we going as?
+        $Script:SqlInstance = (Invoke-Expression -Command (Join-Path -Path $PSScriptRoot -ChildPath 'Get-TestSqlInstance.ps1'))
+        $SqlCredential = (Invoke-Expression -Command (Join-Path -Path $PSScriptRoot -ChildPath 'Get-TestSqlCredential.ps1'))
 
-        # Need to build a $Credential that I cn log into the SQL Server with
-        $Username = 'sa'
-        $Password = $env:SA_PASSWORD
-        $SecureString = ConvertTo-SecureString -AsPlainText $Password -Force
-        $script:cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $Username, $SecureString
+        $cp = @{
+            SqlInstance   = $Script:SqlInstance
+            SqlCredential = $SqlCredential
+        }
     }
 
     Context 'Need good parameters to test against SQL Server' {
-        It 'must have a password available' {
-            ($env:SA_PASSWORD).Count | Should -BeGreaterThan 0
+        It 'have a SQL credential available' {
+            $SqlCredential | Should -Not -BeNullOrEmpty
         }
 
-        It 'must know which server instance to use' {
-            ($script:ServerInstance).Count | Should -BeGreaterThan 0
+        It 'know which SQL Server instance is the test instance' {
+            $SqlInstance | Should -Not -BeNullOrEmpty
         }
     }
 
-    Context 'Is SQL alive' {
-        It "is $($Script:ServerInstance) connectible" {
+    Context "Is Test Server usable" {
+        It "connectible" {
+            write-host $Script:SqlInstance -ForegroundColor Green
 
             $Query = 'select getdate() RightNow'
-            $Result = @(Invoke-Sqlcmd2 -ServerInstance $script:ServerInstance -Credential $script:Cred -Query $Query -AppendServerInstance)
-            $Result.Count | Should -BeGreaterThan 0
+            $Result = @(Invoke-DbaQuery @cp -Query $Query -AppendServerInstance)
+            $Result.Count | Should -BeGreaterThan 0 -Because "Test server should be up"
         }
     }
 }
